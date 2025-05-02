@@ -12,29 +12,52 @@ import Search from "./pages/Search";
 import Admin from "./pages/Admin";
 import Particles from "react-tsparticles";
 import { loadSlim } from "tsparticles-slim";
+import axios from "axios";
 import {
-  FaBook,
-  FaComments,
-  FaProjectDiagram,
-  FaNewspaper,
-  FaSearch,
-  FaSignOutAlt,
-  FaSignInAlt,
-  FaMoon,
-  FaSun,
-  FaUserShield,
-} from "react-icons/fa";
+  FiHome,
+  FiFileText,
+  FiMessageSquare,
+  FiGrid,
+  FiBookOpen,
+  FiSearch,
+  FiShield,
+  FiLogOut,
+  FiLogIn,
+  FiMoon,
+  FiSun,
+  FiMenu,
+  FiX,
+  FiUser,
+} from "react-icons/fi";
 
 function App() {
   const [user, setUser] = useState(null);
+  const [username, setUsername] = useState("");
   const [darkMode, setDarkMode] = useState(
     () => localStorage.getItem("darkMode") === "true"
   );
+  const [isNavOpen, setIsNavOpen] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setUser(user);
-      console.log("Auth State Changed - User:", user); // Debug log
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          const response = await axios.get(
+            `http://localhost:5000/api/user/${user.uid}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          setUsername(response.data.username || "");
+        } catch (error) {
+          console.error("Error fetching username:", error);
+          setUsername("");
+        }
+      } else {
+        setUsername("");
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -50,38 +73,26 @@ function App() {
 
   const particlesOptions = {
     background: {
-      color: { value: darkMode ? "#000000" : "#FFFFFF" },
+      color: { value: darkMode ? "#000000" : "#ffffff" },
     },
     particles: {
-      number: { value: 50, density: { enable: true, value_area: 800 } },
-      color: { value: darkMode ? "#FFFFFF" : "#000000" },
+      number: { value: 30, density: { enable: true, value_area: 1000 } },
+      color: { value: darkMode ? "#ffffff" : "#000000" },
       shape: { type: "circle" },
-      opacity: { value: 0.5 },
-      size: { value: 3, random: true },
+      opacity: { value: 0.2 },
+      size: { value: 2 },
       links: {
         enable: true,
         distance: 150,
-        color: darkMode ? "#FFFFFF" : "#000000",
-        opacity: 0.4,
+        color: darkMode ? "#ffffff" : "#000000",
+        opacity: 0.1,
+        width: 1,
       },
-      move: {
-        enable: true,
-        speed: 2,
-        direction: "none",
-        random: false,
-        straight: false,
-        outModes: "out",
-      },
+      move: { enable: true, speed: 1 },
     },
     interactivity: {
-      events: {
-        onHover: { enable: true, mode: "grab" },
-        onClick: { enable: true, mode: "push" },
-      },
-      modes: {
-        grab: { distance: 200, links: { opacity: 1 } },
-        push: { quantity: 4 },
-      },
+      events: { onHover: { enable: true, mode: "grab" } },
+      modes: { grab: { distance: 200, links: { opacity: 0.3 } } },
     },
   };
 
@@ -89,103 +100,135 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen flex flex-col relative bg-white dark:bg-black">
+      <div className="flex flex-col min-h-screen font-sans bg-white dark:bg-black text-black dark:text-white">
         <Particles
           id="tsparticles"
           init={particlesInit}
           options={particlesOptions}
-          className="absolute inset-0 z-0"
+          className="absolute inset-0 z-0 pointer-events-none"
         />
-        <nav className="sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md p-3 shadow-md z-20 border-b border-gray-200 dark:border-gray-700">
-          <div className="container mx-auto flex items-center justify-between">
+        {/* Navbar */}
+        <header className="fixed top-0 left-0 right-0 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 z-50">
+          <nav className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
             <Link
               to="/"
-              className="text-2xl font-bold text-black dark:text-white"
+              className="text-xl font-bold text-black dark:text-white"
             >
               SynapShare
             </Link>
-            <div className="flex items-center gap-6 text-sm font-medium">
-              <Link
-                to="/notes"
-                className="flex items-center gap-2 text-black dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition"
-              >
-                <FaBook className="text-lg" /> Notes
-              </Link>
-              <Link
-                to="/discussions"
-                className="flex items-center gap-2 text-black dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition"
-              >
-                <FaComments className="text-lg" /> Discussions
-              </Link>
-              <Link
-                to="/nodes"
-                className="flex items-center gap-2 text-black dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition"
-              >
-                <FaProjectDiagram className="text-lg" /> Nodes
-              </Link>
-              <Link
-                to="/news"
-                className="flex items-center gap-2 text-black dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition"
-              >
-                <FaNewspaper className="text-lg" /> News
-              </Link>
-              <Link
-                to="/search"
-                className="flex items-center gap-2 text-black dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition"
-              >
-                <FaSearch className="text-lg" /> Search
-              </Link>
-              {isAdmin && (
+            <div
+              className={`lg:flex items-center gap-4 ${
+                isNavOpen ? "flex" : "hidden"
+              } lg:static fixed top-14 left-0 right-0 bg-gray-100 dark:bg-gray-900 p-4 flex-col lg:flex-row lg:p-0 border-b lg:border-none border-gray-200emmel dark:border-gray-700`}
+            >
+              {[
+                { to: "/", icon: FiHome, label: "Home" },
+                { to: "/notes", icon: FiFileText, label: "Notes" },
+                {
+                  to: "/discussions",
+                  icon: FiMessageSquare,
+                  label: "Discussions",
+                },
+                { to: "/nodes", icon: FiGrid, label: "Nodes" },
+                { to: "/news", icon: FiBookOpen, label: "News" },
+                { to: "/search", icon: FiSearch, label: "Search" },
+                ...(isAdmin
+                  ? [{ to: "/admin", icon: FiShield, label: "Admin" }]
+                  : []),
+              ].map((item) => (
                 <Link
-                  to="/admin"
-                  className="flex items-center gap-2 text-black dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition"
+                  key={item.to}
+                  to={item.to}
+                  className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 hover:text-black dark:hover:text-white rounded-md transition-colors"
+                  onClick={() => setIsNavOpen(false)}
                 >
-                  <FaUserShield className="text-lg" /> Admin
+                  <item.icon size={16} />
+                  <span className="text-sm">{item.label}</span>
                 </Link>
-              )}
+              ))}
+            </div>
+            <div className="flex items-center gap-3">
               {user ? (
-                <button
-                  onClick={() => auth.signOut()}
-                  className="flex items-center gap-2 text-black dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition"
-                >
-                  <FaSignOutAlt className="text-lg" /> Logout
-                </button>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/"
+                    className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white"
+                  >
+                    <FiUser size={16} />
+                    <span className="text-sm hidden sm:block">
+                      {username || user.email.split("@")[0]}
+                    </span>
+                  </Link>
+                  <button
+                    onClick={() => auth.signOut()}
+                    className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 hover:text-black dark:hover:text-white rounded-md"
+                  >
+                    <FiLogOut size={16} />
+                    <span className="text-sm hidden sm:block">Logout</span>
+                  </button>
+                </div>
               ) : (
                 <Link
                   to="/login"
-                  className="flex items-center gap-2 text-black dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition"
+                  className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 hover:text-black dark:hover:text-white rounded-md"
                 >
-                  <FaSignInAlt className="text-lg" /> Login
+                  <FiLogIn size={16} />
+                  <span className="text-sm hidden sm:block">Login</span>
                 </Link>
               )}
               <button
                 onClick={() => setDarkMode(!darkMode)}
-                className="flex items-center gap-2 text-black dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition"
+                className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 hover:text-black dark:hover:text-white rounded-md"
               >
-                {darkMode ? (
-                  <FaSun className="text-lg" />
-                ) : (
-                  <FaMoon className="text-lg" />
-                )}
-                {darkMode ? "Light" : "Dark"}
+                {darkMode ? <FiSun size={16} /> : <FiMoon size={16} />}
+                <span className="text-sm hidden sm:block">
+                  {darkMode ? "Light" : "Dark"}
+                </span>
+              </button>
+              <button
+                onClick={() => setIsNavOpen(!isNavOpen)}
+                className="lg:hidden text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white"
+              >
+                {isNavOpen ? <FiX size={20} /> : <FiMenu size={20} />}
               </button>
             </div>
-          </div>
-        </nav>
+          </nav>
+        </header>
 
-        <main className="container flex-grow relative z-10 pt-12">
-          <Routes>
-            <Route path="/" element={<Home user={user} />} />
-            <Route path="/notes" element={<Notes user={user} />} />
-            <Route path="/discussions" element={<Discussions user={user} />} />
-            <Route path="/nodes" element={<Nodes user={user} />} />
-            <Route path="/news" element={<News />} />
-            <Route path="/search" element={<Search user={user} />} />{" "}
-            {/* Added user prop */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/admin" element={<Admin user={user} />} />
-          </Routes>
+        {/* Main Content */}
+        <main className="flex-1 pt-16 pb-16 relative z-10">
+          <div className="min-h-[calc(100vh-128px)]">
+            <Routes>
+              <Route
+                path="/"
+                element={<Home user={user} username={username} />}
+              />
+              <Route
+                path="/notes"
+                element={<Notes user={user} username={username} />}
+              />
+              <Route
+                path="/discussions"
+                element={<Discussions user={user} username={username} />}
+              />
+              <Route
+                path="/nodes"
+                element={<Nodes user={user} username={username} />}
+              />
+              <Route path="/news" element={<News />} />
+              <Route
+                path="/search"
+                element={<Search user={user} username={username} />}
+              />
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/admin"
+                element={<Admin user={user} username={username} />}
+              />
+            </Routes>
+          </div>
         </main>
+
         <Footer />
       </div>
     </Router>
